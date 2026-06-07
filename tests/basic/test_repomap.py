@@ -46,6 +46,40 @@ class TestRepoMap(unittest.TestCase):
             # close the open cache files, so Windows won't error
             del repo_map
 
+    def test_get_ranked_tags_handles_missing_scipy(self):
+        # Issue #5230: nx.pagerank dispatches to _pagerank_scipy which
+        # lazy-imports scipy. If scipy is missing the resulting
+        # ModuleNotFoundError must not crash the whole session.
+        import networkx
+
+        test_files = ["a.py", "b.py"]
+
+        with IgnorantTemporaryDirectory() as temp_dir:
+            for file in test_files:
+                with open(os.path.join(temp_dir, file), "w") as f:
+                    f.write("def foo():\n    return 1\n")
+
+            io = InputOutput()
+            repo_map = RepoMap(main_model=self.GPT35, root=temp_dir, io=io)
+            other_files = [os.path.join(temp_dir, file) for file in test_files]
+
+            original_pagerank = networkx.pagerank
+
+            def fake_pagerank(*args, **kwargs):
+                raise ModuleNotFoundError("No module named 'scipy'")
+
+            networkx.pagerank = fake_pagerank
+            try:
+                # Pre-fix this raises ModuleNotFoundError; post-fix it returns
+                # gracefully (possibly an empty/None map).
+                result = repo_map.get_repo_map([], other_files)
+            finally:
+                networkx.pagerank = original_pagerank
+
+            self.assertFalse(result)
+
+            del repo_map
+
     def test_repo_map_refresh_files(self):
         with GitTemporaryDirectory() as temp_dir:
             repo = git.Repo(temp_dir)

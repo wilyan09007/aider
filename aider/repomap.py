@@ -529,6 +529,12 @@ class RepoMap:
                 ranked = nx.pagerank(G, weight="weight")
             except ZeroDivisionError:
                 return []
+        except ImportError as err:
+            # Issue #5230 / #1673: networkx >= 3 routes pagerank through
+            # _pagerank_scipy which lazy-imports scipy. Degrade gracefully
+            # instead of crashing the session when a backend dep is missing.
+            self.io.tool_warning(f"Unable to compute repo map: {err}")
+            return []
 
         # distribute the rank from each source node, across all of its out edges
         ranked_definitions = defaultdict(float)
