@@ -363,6 +363,27 @@ class TestMain(TestCase):
                 mock_check_version.assert_called_once()
                 mock_input_output.assert_called_once()
 
+    def test_check_version_handles_permission_error(self):
+        from aider import versioncheck
+
+        io_mock = MagicMock()
+
+        fake_response = MagicMock()
+        fake_response.json.return_value = {"info": {"version": "0.0.1"}}
+
+        fake_path = MagicMock()
+        fake_path.exists.return_value = False
+        fake_path.parent.mkdir.side_effect = PermissionError("Access is denied")
+
+        with (
+            patch("requests.get", return_value=fake_response),
+            patch.object(versioncheck, "VERSION_CHECK_FNAME", fake_path),
+        ):
+            # Must not raise even though mkdir fails with PermissionError
+            versioncheck.check_version(io_mock, just_check=True, verbose=False)
+
+        io_mock.tool_error.assert_not_called()
+
     @patch("aider.main.InputOutput")
     @patch("aider.coders.base_coder.Coder.run")
     def test_main_message_adds_to_input_history(self, mock_run, MockInputOutput):

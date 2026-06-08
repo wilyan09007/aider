@@ -91,8 +91,12 @@ def check_version(io, just_check=False, verbose=False):
         io.tool_error(f"Error checking pypi for new version: {err}")
         return False
     finally:
-        VERSION_CHECK_FNAME.parent.mkdir(parents=True, exist_ok=True)
-        VERSION_CHECK_FNAME.touch()
+        try:
+            VERSION_CHECK_FNAME.parent.mkdir(parents=True, exist_ok=True)
+            VERSION_CHECK_FNAME.touch()
+        except OSError as err:
+            if verbose:
+                io.tool_warning(f"Unable to write version check cache: {err}")
 
     ###
     # is_update_available = True
