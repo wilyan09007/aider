@@ -85,6 +85,24 @@ def test_context_window_error():
     assert ex_info.retry is False
 
 
+def test_unknown_litellm_exception_does_not_crash(monkeypatch):
+    """A new litellm *Error class not in aider's list must not crash construction."""
+    import litellm
+
+    synthetic_name = "__AiderTestSyntheticError"
+    synthetic_cls = type(synthetic_name, (Exception,), {})
+    monkeypatch.setattr(litellm, synthetic_name, synthetic_cls, raising=False)
+
+    # Should not raise even though the synthetic class isn't in aider's EXCEPTIONS.
+    ex = LiteLLMExceptions()
+
+    # Strict mode preserves the developer-mode contract.
+    import pytest
+
+    with pytest.raises(ValueError):
+        ex._load(strict=True)
+
+
 def test_openrouter_error():
     """Test specific handling of OpenRouter API errors"""
     ex = LiteLLMExceptions()
