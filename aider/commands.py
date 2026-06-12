@@ -1343,7 +1343,7 @@ class Commands:
         for pattern in filenames:
             expanded_pattern = expanduser(pattern)
             path_obj = Path(expanded_pattern)
-            is_abs = path_obj.is_absolute()
+            is_abs = path_obj.is_absolute() or bool(path_obj.anchor)
             if not is_abs:
                 path_obj = Path(self.coder.root) / path_obj
 

@@ -1034,6 +1034,27 @@ class TestCommands(TestCase):
             # Ensure no files were added to abs_read_only_fnames
             self.assertEqual(len(coder.abs_read_only_fnames), 0)
 
+    def test_cmd_read_only_with_drive_less_absolute_pattern(self):
+        if sys.platform != "win32":
+            self.skipTest("Windows-specific pathlib anchor behavior")
+        with GitTemporaryDirectory():
+            io = InputOutput(pretty=False, fancy_input=False, yes=False)
+            coder = Coder.create(self.GPT35, None, io)
+            commands = Commands(io, coder)
+
+            pattern = "/aider_nonexistent_xyz_qqq*.tmp"
+            with mock.patch.object(io, "tool_error") as mock_tool_error:
+                # Pre-fix, this raised NotImplementedError from pathlib.Path.glob
+                # because "/foo*" on Windows has a non-empty anchor but
+                # is_absolute() is False (no drive), so it took the relative
+                # branch which uses Path(root).glob(pattern).
+                commands.cmd_read_only(pattern)
+
+            mock_tool_error.assert_called_once()
+            (msg,), _ = mock_tool_error.call_args
+            self.assertTrue(msg.startswith("No matches found for:"))
+            self.assertEqual(len(coder.abs_read_only_fnames), 0)
+
     def test_cmd_add_unicode_error(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
